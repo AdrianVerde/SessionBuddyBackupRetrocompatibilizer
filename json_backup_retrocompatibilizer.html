@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Transformer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Session Buddy Backup Fixer</h2>
+        <input type="file" id="upload" accept=".json">
+        <button id="transform">Process and Download retrocompatible backup</button>
+    </div>
+
+    <script>
+        document.getElementById('transform').addEventListener('click', function() {
+            const inputElement = document.getElementById('upload');
+            if (inputElement.files.length > 0) {
+                const file = inputElement.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const newJson = JSON.parse(e.target.result);
+                    const oldFormat = transformNewToOld(newJson);
+                    downloadJSON(oldFormat, 'transformed.json');
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert('Please upload a file before transforming.');
+            }
+        });
+
+        function transformNewToOld(newJson) {
+            const oldFormat = { "sessions": [] };
+
+            newJson.collections.forEach(collection => {
+                const session = {
+                    "name": collection.title,
+                    "created": convertTimestamp(collection.created),
+                    "modified": convertTimestamp(collection.updated),
+                    "windows": []
+                };
+
+                collection.folders.forEach(folder => {
+                    const window = { "tabs": [] };
+                    folder.links.forEach(link => {
+                        const tab = {
+                            "url": link.url,
+                            "title": link.title,
+                            "favIconUrl": link.favIconUrl || ''
+                        };
+                        window.tabs.push(tab);
+                    });
+                    session.windows.push(window);
+                });
+
+                oldFormat.sessions.push(session);
+            });
+
+            return oldFormat;
+        }
+
+        function convertTimestamp(milliseconds) {
+            const date = new Date(milliseconds);
+            return date.toISOString();
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 4)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
